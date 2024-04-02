@@ -3,14 +3,6 @@ FROM golang:1.22-alpine as builder
 # build
 ARG TARGETOS
 ARG TARGETARCH
-ARG TARGETVARIANT
-
-RUN case "${TARGETVARIANT}" in \
-	"armhf") export GOARM='6' ;; \
-	"armv7") export GOARM='6' ;; \
-	"v6") export GOARM='6' ;; \
-	"v7") export GOARM='7' ;; \
-	esac;
 
 # Add libraries
 RUN apk add --no-cache git make ca-certificates
