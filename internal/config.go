@@ -20,8 +20,8 @@ var config *Config
 
 // Config holds the runtime application config
 type Config struct {
-	LogLevel  string `long:"log-level" env:"LOG_LEVEL" default:"warn" choice:"trace" choice:"debug" choice:"info" choice:"warn" choice:"error" choice:"fatal" choice:"panic" description:"Log level"`
-	LogFormat string `long:"log-format"  env:"LOG_FORMAT" default:"text" choice:"text" choice:"json" choice:"pretty" description:"Log format"`
+	LogLevel  string `long:"log-level" env:"LOG_LEVEL" default:"warn" choice:"trace" choice:"debug" choice:"info" choice:"warn" choice:"error" choice:"fatal" choice:"panic" description:"Log level"` //nolint:staticcheck
+	LogFormat string `long:"log-format"  env:"LOG_FORMAT" default:"text" choice:"text" choice:"json" choice:"pretty" description:"Log format"`                                                        //nolint:staticcheck
 
 	AuthHost               string               `long:"auth-host" env:"AUTH_HOST" description:"Single host to use when returning from 3rd party auth"`
 	Config                 func(s string) error `long:"config" env:"CONFIG" description:"Path to config file" json:"-"`
@@ -29,8 +29,8 @@ type Config struct {
 	InsecureCookie         bool                 `long:"insecure-cookie" env:"INSECURE_COOKIE" description:"Use insecure cookies"`
 	CookieName             string               `long:"cookie-name" env:"COOKIE_NAME" default:"_forward_auth" description:"Cookie Name"`
 	CSRFCookieName         string               `long:"csrf-cookie-name" env:"CSRF_COOKIE_NAME" default:"_forward_auth_csrf" description:"CSRF Cookie Name"`
-	DefaultAction          string               `long:"default-action" env:"DEFAULT_ACTION" default:"auth" choice:"auth" choice:"allow" description:"Default action"`
-	DefaultProvider        string               `long:"default-provider" env:"DEFAULT_PROVIDER" default:"google" choice:"google" choice:"oidc" choice:"generic-oauth" description:"Default provider"`
+	DefaultAction          string               `long:"default-action" env:"DEFAULT_ACTION" default:"auth" choice:"auth" choice:"allow" description:"Default action"`                                 //nolint:staticcheck
+	DefaultProvider        string               `long:"default-provider" env:"DEFAULT_PROVIDER" default:"google" choice:"google" choice:"oidc" choice:"generic-oauth" description:"Default provider"` //nolint:staticcheck
 	Domains                CommaSeparatedList   `long:"domain" env:"DOMAIN" env-delim:"," description:"Only allow given email domains, can be set multiple times"`
 	LifetimeString         int                  `long:"lifetime" env:"LIFETIME" default:"43200" description:"Lifetime in seconds"`
 	LogoutRedirect         string               `long:"logout-redirect" env:"LOGOUT_REDIRECT" description:"URL to redirect to following logout"`
@@ -212,11 +212,15 @@ func (c *Config) parseUnknownFlag(option string, arg flags.SplitArgument, args [
 			rule.Provider = val
 		case "whitelist":
 			list := CommaSeparatedList{}
-			list.UnmarshalFlag(val)
+			if err := list.UnmarshalFlag(val); err != nil {
+				return nil, fmt.Errorf("invalid value '%s' for whitelist: %s", val, err)
+			}
 			rule.Whitelist = list
 		case "domains":
 			list := CommaSeparatedList{}
-			list.UnmarshalFlag(val)
+			if err := list.UnmarshalFlag(val); err != nil {
+				return nil, fmt.Errorf("invalid value '%s' for domains: %s", val, err)
+			}
 			rule.Domains = list
 		default:
 			return args, fmt.Errorf("invalid route param: %v", option)
