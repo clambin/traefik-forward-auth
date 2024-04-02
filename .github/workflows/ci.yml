@@ -5,6 +5,8 @@ on:
     branches:
     - master
     - pr-dependencies
+    - traefik_v3
+
   pull_request:
     branches: [ master ]
 
