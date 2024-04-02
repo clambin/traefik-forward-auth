@@ -5,6 +5,7 @@ on:
     branches:
     - master
     - pr-dependencies
+    - development
   pull_request:
     branches: [ master ]
 
