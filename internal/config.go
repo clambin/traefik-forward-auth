@@ -212,11 +212,15 @@ func (c *Config) parseUnknownFlag(option string, arg flags.SplitArgument, args [
 			rule.Provider = val
 		case "whitelist":
 			list := CommaSeparatedList{}
-			list.UnmarshalFlag(val)
+			if err := list.UnmarshalFlag(val); err != nil {
+				return nil, fmt.Errorf("invalid value '%s' for whitelist: %s", val, err)
+			}
 			rule.Whitelist = list
 		case "domains":
 			list := CommaSeparatedList{}
-			list.UnmarshalFlag(val)
+			if err := list.UnmarshalFlag(val); err != nil {
+				return nil, fmt.Errorf("invalid value '%s' for whitelist: %s", val, err)
+			}
 			rule.Domains = list
 		default:
 			return args, fmt.Errorf("invalid route param: %v", option)
