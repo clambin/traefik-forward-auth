@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -274,7 +275,7 @@ func Nonce() (error, string) {
 		return err, ""
 	}
 
-	return nil, fmt.Sprintf("%x", nonce)
+	return nil, hex.EncodeToString(nonce)
 }
 
 // Cookie domain

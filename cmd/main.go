@@ -18,11 +18,12 @@ func main() {
 	// Perform config validation
 	config.Validate()
 
-	// Build server
-	server := internal.NewServer()
-
 	// Attach router to default server
-	http.HandleFunc("/", server.RootHandler)
+	s, err := internal.NewServer()
+	if err != nil {
+		log.Fatalf("failed to create server: %s", err.Error())
+	}
+	http.Handle("/", s)
 
 	// Start
 	log.WithField("config", config).Debug("Starting with config")

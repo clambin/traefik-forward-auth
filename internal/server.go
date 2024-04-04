@@ -1,6 +1,7 @@
 package tfa
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 
@@ -11,50 +12,49 @@ import (
 
 // Server contains router and handler methods
 type Server struct {
-	router *traefikHTTPMuxer.Muxer
+	http.Handler
 }
 
 // NewServer creates a new server object and builds router
-func NewServer() *Server {
-	s := &Server{}
-	s.buildRoutes()
-	return s
-}
-
-func (s *Server) buildRoutes() {
-	var err error
-	s.router, err = traefikHTTPMuxer.NewMuxer()
-	if err != nil {
-		log.Fatal(err)
-	}
+func NewServer() (*Server, error) {
+	var s Server
+	m := http.NewServeMux()
+	// Add callback handler
+	m.Handle(config.Path, s.AuthCallbackHandler())
+	// Add logout handler
+	m.Handle(config.Path+"/logout", s.LogoutHandler())
 
 	// Let's build a router
+	routeHandler, _ := traefikHTTPMuxer.NewMuxer()
+
 	for name, rule := range config.Rules {
 		matchRule := rule.formattedRule()
 		if rule.Action == "allow" {
-			_ = s.router.AddRoute(matchRule, "v2", 1, s.AllowHandler(name))
+			if err := routeHandler.AddRoute(matchRule, "v2", 1, s.AllowHandler(name)); err != nil {
+				return nil, fmt.Errorf("add route(%s: %s): %w", name, matchRule, err)
+			}
 		} else {
-			_ = s.router.AddRoute(matchRule, "v2", 1, s.AuthHandler(rule.Provider, name))
+			if err := routeHandler.AddRoute(matchRule, "v2", 1, s.AuthHandler(rule.Provider, name)); err != nil {
+				return nil, fmt.Errorf("add route(%s: %s): %w", name, matchRule, err)
+			}
 		}
 	}
 
-	// Add callback handler
-	_ = s.router.AddRoute("Path(`"+config.Path+"`)", "v2", 1, s.AuthCallbackHandler())
-
-	// Add logout handler
-	_ = s.router.AddRoute("Path(`"+config.Path+"/logout`)", "v2", 1, s.LogoutHandler())
-
 	// Add a default handler
 	if config.DefaultAction == "allow" {
-		s.router.SetDefaultHandler(s.AllowHandler("default"))
+		routeHandler.SetDefaultHandler(s.AllowHandler("default"))
 	} else {
-		s.router.SetDefaultHandler(s.AuthHandler(config.DefaultProvider, "default"))
+		routeHandler.SetDefaultHandler(s.AuthHandler(config.DefaultProvider, "default"))
 	}
+
+	m.Handle("/", routeHandler)
+	s.Handler = m
+	return &s, nil
 }
 
-// RootHandler Overwrites the request method, host and URL with those from the
+// ServeHTTP Overwrites the request method, host and URL with those from the
 // forwarded request so it's correctly routed by mux
-func (s *Server) RootHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Modify request
 	r.Method = r.Header.Get("X-Forwarded-Method")
 	r.Host = r.Header.Get("X-Forwarded-Host")
@@ -65,7 +65,7 @@ func (s *Server) RootHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Pass to mux
-	s.router.ServeHTTP(w, r)
+	s.Handler.ServeHTTP(w, r)
 }
 
 // AllowHandler Allows requests

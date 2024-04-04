@@ -31,7 +31,49 @@ func init() {
  * Tests
  */
 
-func TestServerRootHandler(t *testing.T) {
+func TestNewServer(t *testing.T) {
+	tests := []struct {
+		name   string
+		config *Config
+		want   assert.ErrorAssertionFunc
+	}{
+		{
+			name:   "success",
+			config: newDefaultConfig(),
+			want:   assert.NoError,
+		},
+		{
+			name: "bad allow rule",
+			config: &Config{
+				Path: "/auth",
+				Rules: map[string]*Rule{
+					"rule": {Action: "allow", Rule: "invalid rule"},
+				},
+			},
+			want: assert.Error,
+		},
+		{
+			name: "bad auth rule",
+			config: &Config{
+				Path: "/auth",
+				Rules: map[string]*Rule{
+					"rule": {Action: "auth", Rule: "invalid rule"},
+				},
+			},
+			want: assert.Error,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config = tt.config
+			_, err := NewServer()
+			tt.want(t, err)
+		})
+	}
+}
+
+func TestServerServeHTTP(t *testing.T) {
 	assert := assert.New(t)
 	config = newDefaultConfig()
 
@@ -41,7 +83,8 @@ func TestServerRootHandler(t *testing.T) {
 	req.Header.Add("X-Forwarded-Proto", "https")
 	req.Header.Add("X-Forwarded-Host", "example.com")
 	req.Header.Add("X-Forwarded-Uri", "/foo?q=bar")
-	NewServer().RootHandler(httptest.NewRecorder(), req)
+	s, _ := NewServer()
+	s.ServeHTTP(httptest.NewRecorder(), req)
 
 	assert.Equal("GET", req.Method, "x-forwarded-method should be read into request")
 	assert.Equal("example.com", req.Host, "x-forwarded-host should be read into request")
@@ -54,7 +97,8 @@ func TestServerRootHandler(t *testing.T) {
 	req.Header.Add("X-Forwarded-Method", "GET")
 	req.Header.Add("X-Forwarded-Proto", "https")
 	req.Header.Add("X-Forwarded-Host", "example.com")
-	NewServer().RootHandler(httptest.NewRecorder(), req)
+	s, _ = NewServer()
+	s.ServeHTTP(httptest.NewRecorder(), req)
 
 	assert.Equal("GET", req.Method, "x-forwarded-method should be read into request")
 	assert.Equal("example.com", req.Host, "x-forwarded-host should be read into request")
@@ -540,7 +584,8 @@ func doHttpRequest(r *http.Request, c *http.Cookie) (*http.Response, string) {
 		r.Header.Add("Cookie", c)
 	}
 
-	NewServer().RootHandler(w, r)
+	s, _ := NewServer()
+	s.ServeHTTP(w, r)
 
 	res := w.Result()
 	body, _ := io.ReadAll(res.Body)
